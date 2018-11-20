@@ -64,7 +64,11 @@ class EtsyClient
 	        $data = $this->oauth->fetch($this->base_url . $this->base_path . $path, $params, $method);
 	        $response = $this->oauth->getLastResponse();
 
-            ////
+            return json_decode($response, !$json);
+        } catch (\OAuthException $e) {
+            throw new EtsyRequestException($e, $this->oauth, $params);
+        } finally {
+
             $injector = InjectVariables::instance();
             $logger = $injector->logger;
             if ($logger !== null) {
@@ -96,11 +100,7 @@ class EtsyClient
                 $logger->logResponse($method, $url, $http_code, $recv, $bodyRecv);
 
             }
-            ////
 
-            return json_decode($response, !$json);
-        } catch (\OAuthException $e) {
-            throw new EtsyRequestException($e, $this->oauth, $params);
         }
     }
 
