@@ -1,6 +1,8 @@
 <?php
 namespace Etsy;
 
+use ConnectorSupport\Curl\InjectVariables;
+
 /**
 *
 */
@@ -62,11 +64,45 @@ class EtsyClient
 	        $data = $this->oauth->fetch($this->base_url . $this->base_path . $path, $params, $method);
 	        $response = $this->oauth->getLastResponse();
 
-	        return json_decode($response, !$json);
-	    } catch (\OAuthException $e) {
-	        throw new EtsyRequestException($e, $this->oauth, $params);
-	    }
-	}
+            ////
+            $injector = InjectVariables::instance();
+            $logger = $injector->logger;
+            if ($logger !== null) {
+
+                $info = $this->oauth->getLastResponseInfo();
+                $http_code = $info['http_code'];
+                $url = $info['url'];
+                $split = explode('?', $url);
+                if (count($split) >= 1) {$url = $split[0];} else {$url = null;}
+                if (count($split) >= 2) {$query = $split[1];} else {$query = null;}
+
+                if (array_key_exists('headers_sent', $this->oauth->debugInfo)) {$headersSent = $this->oauth->debugInfo['headers_sent'];} else {$headersSent = null;}
+                if (array_key_exists('headers_recv', $this->oauth->debugInfo)) {$headersRecv = $this->oauth->debugInfo['headers_recv'];} else {$headersRecv = null;}
+                if (array_key_exists('body_sent', $this->oauth->debugInfo)) {$bodySent = $this->oauth->debugInfo['body_sent'];} else {$bodySent = null;}
+                if (array_key_exists('body_recv', $this->oauth->debugInfo)) {$bodyRecv = $this->oauth->debugInfo['body_recv'];} else {$bodyRecv = null;}
+
+                $sent = [];
+                $headers = explode("\r\n", $headersSent);
+                foreach ($headers as $header) {
+                    $temp = explode(':', $header, 2);
+                    if (count($temp) > 1) {
+                        $sent[trim($temp[0])] = trim($temp[1]);
+                    }
+                }
+
+                $recv = explode("\r\n", $headersRecv);
+
+                $logger->logRequest($method, $url, $query, $sent, $bodySent);
+                $logger->logResponse($method, $url, $http_code, $recv, $bodyRecv);
+
+            }
+            ////
+
+            return json_decode($response, !$json);
+        } catch (\OAuthException $e) {
+            throw new EtsyRequestException($e, $this->oauth, $params);
+        }
+    }
 
 	public function getRequestToken(array $extra = array())
 	{

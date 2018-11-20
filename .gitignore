@@ -2,3 +2,5 @@ vendor/
 scripts/autoload.php
 test.php
 auth.php
+/nbproject/private/
+.idea/
